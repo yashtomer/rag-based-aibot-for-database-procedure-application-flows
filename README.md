@@ -1,86 +1,83 @@
-We are looking for an experienced Python Backend Engineer to design and implement a RAG (Retrieval-Augmented Generation) based AI bot that deeply understands our databases, procedures, and application flows, and can assist with all types of database-related tasks.
- 
-The goal is to build an internal intelligence bot that can:
- 
-Answer natural-language questions about our databases
-Explain stored procedures, jobs, and workflows
-Generate architecture diagrams, ER diagrams, and flow charts
-Help write and validate SQL queries
-Assist in documentation, reporting, and impact analysis
-This bot will be used by developers, DevOps, and analysts as a single interface to understand and interact with our systems.
- 
-Core Objectives
- 
-1. Knowledge Ingestion (RAG Layer)
-The bot should ingest and index:
- 
-Database schemas (tables, columns, relationships)
-Stored procedures, functions, triggers, jobs
-Existing SQL scripts
-Application documentation
-Admin panel procedures and workflows
-Sample reports and queries
-This knowledge should be searchable and retrievable using vector embeddings.
- 
-2. Database Intelligence
-The bot must be able to:
- 
-Explain table relationships and dependencies
-Answer questions like:
-“Which tables are impacted if I change column X?”
-“How does this stored procedure work step-by-step?”
-“Which procedures write to this table?”
-Generate optimized SQL queries from natural language
-Validate queries against schema rules
-Help analyze performance and indexing
- 
-3. Architecture & Flow Visualization
-The bot should generate or assist in generating:
- 
-ER Diagrams
-Database schema diagrams
-Procedure execution flows
-Data movement flow charts
-High-level system architecture diagrams
- 
-4. Dev & Ops Support
-The bot should assist with:
- 
-Data extraction for reports
-Root-cause analysis using DB logs and queries
-Explaining production vs staging differences
-Helping new developers onboard faster
-Answering questions about deployment and data flows
-Expected Bot Capabilities (Examples)
- 
-✔ “Explain how the daily_summary procedure works”
-✔ “Generate an ER diagram for the finance schema”
-✔ “What happens if we delete data from this table?”
-✔ “Write a query to get monthly exchange closing data”
-✔ “Show data flow from ingestion to reporting”
-✔ “Create a flow chart of this admin procedure”
- 
-Tech Stack (Preferred, Flexible)
- 
-LLM: Gemini
-RAG Framework: LangChain / LlamaIndex
-Vector DB: Pinecone / Weaviate / FAISS / Chroma
-Databases: MySQL
-Backend: Python (FastAPI preferred)
-Auth: Azure AD / IAM / RBAC
-Deployment: Azure (VM)
-Diagram Generation: Mermaid / PlantUML
-Security & Access
- 
-Read-only DB access for ingestion
-No data used for model training
-Private embeddings and enterprise-grade security
-On-prem / private cloud deployment only
-Deliverables
- 
-Working RAG-based AI bot (API or UI)
-Ingestion pipelines for DB + docs
-Query generation and explanation module
-Diagram and flow chart generation
-Documentation + onboarding guide
-Chat Interface
+# Database Intelligence Bot
+
+A RAG-based AI bot designed to assist with database-related tasks using Google Gemini and ChromaDB. It can answer natural language questions about your database schema and generate Mermaid.js diagrams.
+
+## Prerequisites
+
+- **Python 3.10+**
+- **MySQL Database**
+- **Google Gemini API Key**
+
+## Installation
+
+1. Clone the repository.
+2. Create a virtual environment (optional but recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Configuration
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Edit `.env` with your database credentials and Google API Key.
+   - `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`
+   - `GOOGLE_API_KEY`
+
+## Running the Application
+
+Start the FastAPI server using the provided script:
+```bash
+./run.sh
+```
+
+Or manually:
+```bash
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The server will start at `http://localhost:8000`.
+
+## API Usage
+
+### 1. Ingest Database Schema
+
+Run this first to scan your database and build the knowledge base.
+
+```bash
+curl -X POST http://localhost:8000/ingest
+```
+
+### 2. Chat with the Bot
+
+Ask questions about table relationships, stored procedures, or general queries.
+
+```bash
+curl -X POST http://localhost:8000/chat \
+     -H "Content-Type: application/json" \
+     -d '{"query": "Explain how the orders table relates to customers"}'
+```
+
+### 3. Generate Diagrams
+
+Request Mermaid.js syntax for ER diagrams or flows.
+
+```bash
+curl -X POST http://localhost:8000/diagram \
+     -H "Content-Type: application/json" \
+     -d '{"request": "Create an ER diagram for the user management module"}'
+```
+
+## Project Structure
+
+- `src/database.py`: Handles database connection and schema introspection using SQLAlchemy.
+- `src/vector_store.py`: Manages vector embeddings and retrieval using ChromaDB.
+- `src/rag.py`: Contains the logic for interacting with the LLM (Gemini) using LangChain.
+- `src/main.py`: The FastAPI application defining the endpoints.
