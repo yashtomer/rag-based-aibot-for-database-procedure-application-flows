@@ -7,19 +7,16 @@ A RAG-based AI bot designed to assist with database-related tasks using Google G
 - **Python 3.10+**
 - **MySQL Database**
 - **Google Gemini API Key**
+- **uv** (An extremely fast Python package installer and resolver)
 
 ## Installation
 
 1. Clone the repository.
-2. Create a virtual environment (optional but recommended):
+2. Install dependencies using `uv`:
    ```bash
-   python -m venv venv
-   source venv/bin/activate
+   uv sync
    ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+   This will create a `.venv` directory and install all required packages.
 
 ## Configuration
 
@@ -38,9 +35,9 @@ Start the FastAPI server using the provided script:
 ./run.sh
 ```
 
-Or manually:
+Or manually with `uv`:
 ```bash
-uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The server will start at `http://localhost:8000`.
