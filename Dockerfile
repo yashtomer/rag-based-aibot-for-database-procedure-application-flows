@@ -3,8 +3,8 @@ FROM python:3.12-slim
 # Set the working directory
 WORKDIR /app
 
-# Install uv from the official Astral image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Install uv natively via pip to avoid cross-architecture binary execution issues
+RUN pip install uv
 
 # Copy pyproject.toml and uv.lock first to leverage Docker layer caching
 COPY pyproject.toml uv.lock ./
