@@ -16,7 +16,7 @@ RUN uv sync --frozen --no-dev
 COPY . .
 
 # Expose the port Streamlit runs on
-EXPOSE 8501
+EXPOSE 8502
 
 # Run the Streamlit application
-CMD ["uv", "run", "streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["uv", "run", "streamlit", "run", "app.py", "--server.port=8502", "--server.address=0.0.0.0"]

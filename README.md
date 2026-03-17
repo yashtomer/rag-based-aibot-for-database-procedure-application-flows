@@ -34,9 +34,9 @@ A RAG-based AI bot designed to assist with database-related tasks using Google G
 
 1. **Start the Streamlit UI (Frontend)**
    ```bash
-   uv run streamlit run app.py
+   uv run streamlit run app.py --server.port 8502
    ```
-   The UI will be available at `http://localhost:8501`.
+   The UI will be available at `http://localhost:8502`.
 
 2. **Start the FastAPI Backend (Optional)**
    ```bash
@@ -49,18 +49,18 @@ A RAG-based AI bot designed to assist with database-related tasks using Google G
 
 1. **Build the Docker image:**
    ```bash
-   docker build -t db-intelligence-bot .
+   sudo docker build -t db-intelligence-bot .
    ```
 2. **Run the Docker container:**
    ```bash
-   docker run -d \
+   sudo docker run -d \
      --name db-bot-container \
-     -p 8502:8501 \
+     -p 8502:8502 \
      --env-file .env \
      -v $(pwd)/chroma_db:/app/chroma_db \
      db-intelligence-bot
    ```
-   The application UI will now be accessible at `http://localhost:8501`.
+   The application UI will now be accessible at `http://localhost:8502`.
 
 ### Option 3: Setup via Linux (Production)
 
@@ -81,7 +81,7 @@ To deploy securely for production on a Linux server without containerization:
    User=your_linux_user
    WorkingDirectory=/path/to/your/project
    EnvironmentFile=/path/to/your/project/.env
-   ExecStart=/path/to/your/project/.venv/bin/streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+   ExecStart=/path/to/your/project/.venv/bin/streamlit run app.py --server.port 8502 --server.address 0.0.0.0
    Restart=always
    RestartSec=3
 
@@ -101,7 +101,7 @@ To deploy securely for production on a Linux server without containerization:
        server_name your_domain_or_ip.com;
 
        location / {
-           proxy_pass http://127.0.0.1:8501;
+           proxy_pass http://127.0.0.1:8502;
            proxy_http_version 1.1;
            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
            proxy_set_header Host $host;
