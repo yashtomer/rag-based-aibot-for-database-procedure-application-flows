@@ -12,6 +12,7 @@ dependencies = [
     "langchain-community>=0.3.17",
     "langchain-google-genai>=2.0.9",
     "langchain-text-splitters>=0.3.6",
+    "numpy<2.0.0",
     "pandas>=2.3.3",
     "pydantic>=2.10.7",
     "pydantic-settings>=2.7.1",
