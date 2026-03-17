@@ -32,10 +32,10 @@ def get_schema_summary(engine) -> str:
         table_names = inspector.get_table_names()
     except Exception as e:
         return f"Error retrieving table names: {e}"
-
+    #print(table_names)
     for table_name in table_names:
         table_summary = [f"Table: {table_name}"]
-
+        #print(table_summary)
         # Columns
         columns = []
         try:
@@ -50,7 +50,7 @@ def get_schema_summary(engine) -> str:
             table_summary.append("Columns:\n" + "\n".join(columns))
         except Exception as e:
              table_summary.append(f"Error reading columns: {e}")
-
+        #print("table_summary final",table_summary)
         # Foreign Keys
         try:
             fks = inspector.get_foreign_keys(table_name)
@@ -107,6 +107,10 @@ def get_full_db_context() -> str:
     """
     engine = get_engine()
     schema = get_schema_summary(engine)
+    #print("----- SCHEMA OUTPUT START -----")
+    #print(schema)
+    #print("----- SCHEMA OUTPUT END -----")
+    #raise Exception("Exiting deliberately after schema print")
     procs = get_stored_procedures(engine)
-
+   
     return f"DATABASE SCHEMA:\n{schema}\n\nSTORED PROCEDURES:\n{procs}"

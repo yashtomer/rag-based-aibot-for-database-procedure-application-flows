@@ -12,7 +12,7 @@ def get_llm():
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable is not set")
-    return ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key, temperature=0)
+    return ChatGoogleGenerativeAI(model="models/gemini-flash-latest", google_api_key=api_key, temperature=0)
 
 def format_docs(docs):
     return "\n\n".join([d.page_content for d in docs])

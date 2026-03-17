@@ -11,7 +11,7 @@ def get_embedding_function():
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable is not set")
-    return GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
+    return GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", google_api_key=api_key)
 
 def get_vector_store():
     persist_directory = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
