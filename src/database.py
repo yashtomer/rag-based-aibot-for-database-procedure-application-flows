@@ -1,4 +1,5 @@
 import os
+import urllib.parse
 from typing import List
 from sqlalchemy import create_engine, inspect, text
 from dotenv import load_dotenv
@@ -16,7 +17,8 @@ def get_db_url() -> str:
         print("Warning: Missing database configuration in .env. Using a mock SQLite DB for demonstration.")
         return "sqlite:///:memory:"
 
-    return f"mysql+pymysql://{user}:{password}@{host}:{port}/{db}"
+    encoded_password = urllib.parse.quote_plus(password) if password else ""
+    return f"mysql+pymysql://{user}:{encoded_password}@{host}:{port}/{db}"
 
 def get_engine():
     return create_engine(get_db_url())
@@ -107,10 +109,6 @@ def get_full_db_context() -> str:
     """
     engine = get_engine()
     schema = get_schema_summary(engine)
-    #print("----- SCHEMA OUTPUT START -----")
-    #print(schema)
-    #print("----- SCHEMA OUTPUT END -----")
-    #raise Exception("Exiting deliberately after schema print")
     procs = get_stored_procedures(engine)
    
     return f"DATABASE SCHEMA:\n{schema}\n\nSTORED PROCEDURES:\n{procs}"

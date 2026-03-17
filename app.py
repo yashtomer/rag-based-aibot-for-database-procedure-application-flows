@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import urllib.parse
 import pandas as pd
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
@@ -39,7 +40,8 @@ with st.sidebar:
         port = os.getenv("MYSQL_PORT", "3306")
         if not all([user, host]):
             return None
-        url = f"mysql+pymysql://{user}:{password}@{host}:{port}/"
+        encoded_password = urllib.parse.quote_plus(password) if password else ""
+        url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{port}/"
         return create_engine(url)
 
     engine = get_base_engine()
@@ -92,7 +94,9 @@ with st.sidebar:
         # Get tables
         tables = []
         try:
-            target_engine = create_engine(f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
+            password = os.getenv('MYSQL_PASSWORD')
+            encoded_password = urllib.parse.quote_plus(password) if password else ""
+            target_engine = create_engine(f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{encoded_password}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
             with target_engine.connect() as conn:
                 res = conn.execute(text("SHOW TABLES"))
                 tables = [row[0] for row in res]
