@@ -112,8 +112,8 @@ with st.sidebar:
             user = os.getenv('MYSQL_USER', "").strip('\"\'')
             host = os.getenv('MYSQL_HOST', "").strip('\"\'')
 
-            url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{os.getenv('MYSQL_PORT', '3306').strip('\"\'')}/{review_db}"
-            print(f"Connecting to Target Database: mysql+pymysql://{user}:***@{host}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
+            url = f"mysql+pymysql://{user}:{password}@{host}:{os.getenv('MYSQL_PORT', '3306').strip('\"\'')}/{review_db}"
+            print(f"Connecting to Target Database: mysql+pymysql://{user}:{password}@{host}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
             target_engine = create_engine(url)
             with target_engine.connect() as conn:
                 res = conn.execute(text("SHOW TABLES"))
