@@ -42,6 +42,8 @@ with st.sidebar:
             return None
         encoded_password = urllib.parse.quote_plus(password) if password else ""
         url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{port}/"
+        print(f"Connecting to Base Database: mysql+pymysql://{user}:***@{host}:{port}/")
+        print(f"Encoded Password Being Used: {encoded_password}")
         return create_engine(url)
 
     engine = get_base_engine()
@@ -96,7 +98,9 @@ with st.sidebar:
         try:
             password = os.getenv('MYSQL_PASSWORD')
             encoded_password = urllib.parse.quote_plus(password) if password else ""
-            target_engine = create_engine(f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{encoded_password}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
+            url = f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{encoded_password}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}"
+            print(f"Connecting to Target Database: mysql+pymysql://{os.getenv('MYSQL_USER')}:***@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
+            target_engine = create_engine(url)
             with target_engine.connect() as conn:
                 res = conn.execute(text("SHOW TABLES"))
                 tables = [row[0] for row in res]
