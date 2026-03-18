@@ -55,7 +55,7 @@ A RAG-based AI bot designed to assist with database-related tasks using Google G
    ```bash
    sudo docker run -d \
      --name db-bot-container \
-     -p 8502:8502 \
+     --network host \
      --env-file .env \
      -v $(pwd)/chroma_db:/app/chroma_db \
      db-intelligence-bot

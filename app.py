@@ -38,10 +38,6 @@ with st.sidebar:
         password = os.getenv("MYSQL_PASSWORD", "").strip('\"\'')
         host = os.getenv("MYSQL_HOST", "").strip('\"\'')
         port = os.getenv("MYSQL_PORT", "3306").strip('\"\'')
-        
-        # In Docker on Linux, 'localhost' points to the container itself, not the host machine!
-        if host == 'localhost' or host == '127.0.0.1':
-            host = '172.17.0.1'  # Default Docker bridge IP to reach the host machine
 
         if not all([user, host]):
             return None
@@ -115,8 +111,6 @@ with st.sidebar:
             
             user = os.getenv('MYSQL_USER', "").strip('\"\'')
             host = os.getenv('MYSQL_HOST', "").strip('\"\'')
-            if host == 'localhost' or host == '127.0.0.1':
-                host = '172.17.0.1'
 
             url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{os.getenv('MYSQL_PORT', '3306').strip('\"\'')}/{review_db}"
             print(f"Connecting to Target Database: mysql+pymysql://{user}:***@{host}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")

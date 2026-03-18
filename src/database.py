@@ -12,10 +12,6 @@ def get_db_url() -> str:
     host = os.getenv("MYSQL_HOST", "").strip('\"\'')
     port = os.getenv("MYSQL_PORT", "3306").strip('\"\'')
     db = os.getenv("MYSQL_DATABASE", "").strip('\"\'')
-    
-    # In Docker on Linux, 'localhost' points to the container itself, not the host machine!
-    if host == 'localhost' or host == '127.0.0.1':
-        host = '172.17.0.1'  # Default Docker bridge IP to reach the host machine
 
     if not all([user, host, db]):
         print("Warning: Missing database configuration in .env. Using a mock SQLite DB for demonstration.")
