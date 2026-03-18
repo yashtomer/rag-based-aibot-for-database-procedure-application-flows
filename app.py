@@ -42,17 +42,17 @@ with st.sidebar:
         if not all([user, host]):
             return None
         encoded_password = urllib.parse.quote_plus(password) if password else ""
-        url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{port}/"
+        url = f"mysql+pymysql://{user}:{password}@{host}:{port}/"
         
         # Force print to Docker daemon logging
         import sys
         print(f"\n--- DEBUG LOGGING ---", file=sys.stderr)
-        print(f"Connecting to Base Database: mysql+pymysql://{user}:***@{host}:{port}/", file=sys.stderr)
-        print(f"Encoded Password Being Used: {encoded_password}", file=sys.stderr)
+        print(f"Connecting to Base Database: mysql+pymysql://{user}:{password}@{host}:{port}/", file=sys.stderr)
+        print(f"Encoded Password Being Used: {password}", file=sys.stderr)
         sys.stderr.flush()
         
         # Test directly rendering it to the user's Streamlit browser so they can see immediately
-        st.sidebar.info(f"Targeting Host: {host}:{port}\nEncoded Pass starts with: {encoded_password[:3]}...")
+        st.sidebar.info(f"Targeting Host: {host}:{port}\nEncoded Pass starts with: {password[:3]}...")
         
         return create_engine(url)
 
