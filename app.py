@@ -34,10 +34,15 @@ with st.sidebar:
     st.subheader("2. Database Status")
     
     def get_base_engine():
-        user = os.getenv("MYSQL_USER")
-        password = os.getenv("MYSQL_PASSWORD")
-        host = os.getenv("MYSQL_HOST")
-        port = os.getenv("MYSQL_PORT", "3306")
+        user = os.getenv("MYSQL_USER", "").strip('\"\'')
+        password = os.getenv("MYSQL_PASSWORD", "").strip('\"\'')
+        host = os.getenv("MYSQL_HOST", "").strip('\"\'')
+        port = os.getenv("MYSQL_PORT", "3306").strip('\"\'')
+        
+        # In Docker on Linux, 'localhost' points to the container itself, not the host machine!
+        if host == 'localhost' or host == '127.0.0.1':
+            host = '172.17.0.1'  # Default Docker bridge IP to reach the host machine
+
         if not all([user, host]):
             return None
         encoded_password = urllib.parse.quote_plus(password) if password else ""
@@ -105,10 +110,16 @@ with st.sidebar:
         # Get tables
         tables = []
         try:
-            password = os.getenv('MYSQL_PASSWORD')
+            password = os.getenv('MYSQL_PASSWORD', "").strip('\"\'')
             encoded_password = urllib.parse.quote_plus(password) if password else ""
-            url = f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{encoded_password}@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}"
-            print(f"Connecting to Target Database: mysql+pymysql://{os.getenv('MYSQL_USER')}:***@{os.getenv('MYSQL_HOST')}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
+            
+            user = os.getenv('MYSQL_USER', "").strip('\"\'')
+            host = os.getenv('MYSQL_HOST', "").strip('\"\'')
+            if host == 'localhost' or host == '127.0.0.1':
+                host = '172.17.0.1'
+
+            url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{os.getenv('MYSQL_PORT', '3306').strip('\"\'')}/{review_db}"
+            print(f"Connecting to Target Database: mysql+pymysql://{user}:***@{host}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
             target_engine = create_engine(url)
             with target_engine.connect() as conn:
                 res = conn.execute(text("SHOW TABLES"))
