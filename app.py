@@ -42,13 +42,14 @@ with st.sidebar:
         if not all([user, host]):
             return None
         encoded_password = urllib.parse.quote_plus(password) if password else ""
-        url = f"mysql+pymysql://{user}:{password}@{host}:{port}/"
+        url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{port}/"
         
         # Force print to Docker daemon logging
         import sys
         print(f"\n--- DEBUG LOGGING ---", file=sys.stderr)
-        print(f"Connecting to Base Database: mysql+pymysql://{user}:{password}@{host}:{port}/", file=sys.stderr)
-        print(f"Encoded Password Being Used: {password}", file=sys.stderr)
+        print(f"Raw Password: {password}", file=sys.stderr)
+        print(f"Encoded Password: {encoded_password}", file=sys.stderr)
+        print(f"Final URL: mysql+pymysql://{user}:{encoded_password}@{host}:{port}/", file=sys.stderr)
         sys.stderr.flush()
         
         # Test directly rendering it to the user's Streamlit browser so they can see immediately
@@ -112,8 +113,8 @@ with st.sidebar:
             user = os.getenv('MYSQL_USER', "").strip('\"\'')
             host = os.getenv('MYSQL_HOST', "").strip('\"\'')
 
-            url = f"mysql+pymysql://{user}:{password}@{host}:{os.getenv('MYSQL_PORT', '3306').strip('\"\'')}/{review_db}"
-            print(f"Connecting to Target Database: mysql+pymysql://{user}:{password}@{host}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
+            url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{os.getenv('MYSQL_PORT', '3306').strip('\"\'')}/{review_db}"
+            print(f"Connecting to Target Database: mysql+pymysql://{user}:{encoded_password}@{host}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
             target_engine = create_engine(url)
             with target_engine.connect() as conn:
                 res = conn.execute(text("SHOW TABLES"))

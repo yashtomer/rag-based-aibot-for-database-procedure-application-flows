@@ -18,9 +18,10 @@ def get_db_url() -> str:
         return "sqlite:///:memory:"
 
     encoded_password = urllib.parse.quote_plus(password) if password else ""
-    db_url = f"mysql+pymysql://{user}:{password}@{host}:{port}/{db}"
-    print(f"Connecting to Full Database: mysql+pymysql://{user}:{password}@{host}:{port}/{db}")
-    print(f"Password Being Used: {password}")
+    db_url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{port}/{db}"
+    print(f"Connecting to Full Database: mysql+pymysql://{user}:{encoded_password}@{host}:{port}/{db}")
+    print(f"Raw Password: {password}")
+    print(f"Encoded Password: {encoded_password}")
     return db_url
 
 def get_engine():
