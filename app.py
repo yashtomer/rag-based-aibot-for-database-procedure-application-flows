@@ -14,13 +14,64 @@ load_dotenv()
 
 st.set_page_config(page_title="DB Intelligence Bot", page_icon="🤖", layout="wide")
 
+# Theme state management
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'Light'
+
+# Custom CSS for theme
+if st.session_state.theme == 'Dark':
+    st.markdown("""
+        <style>
+        /* Dark Mode Styles */
+        .stApp {
+            background-color: #0E1117;
+            color: #FAFAFA;
+        }
+        section[data-testid="stSidebar"] {
+            background-color: #1a1c24;
+        }
+        .stButton>button {
+            background-color: #262730;
+            color: white;
+            border: 1px solid #4a4d5a;
+        }
+        .stSelectbox div[data-baseweb="select"] > div {
+            background-color: #262730;
+            color: white;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <style>
+        /* Light Mode Styles */
+        .stApp {
+            background-color: #FFFFFF;
+            color: #262730;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
 st.title("🤖 Database Intelligence Bot")
 
 with st.sidebar:
     st.header("⚙️ System Configuration")
     
+    # Theme Toggle
+    if st.button("🌓 Toggle Dark/Light Mode"):
+        st.session_state.theme = "Dark" if st.session_state.theme == "Light" else "Light"
+        st.rerun()
+
     # 1. Check LLM Connectivity
     st.subheader("1. LLM Status")
+    try:
+        llm = get_llm()
+        # Use .model attribute which is passed in constructor
+        model_display = getattr(llm, 'model', 'gemini-flash-latest')
+        st.info(f"Selected Model: `{model_display}`")
+    except Exception as e:
+        st.error(f"Error identifying LLM: {e}")
+
     if st.button("Check LLM Connectivity"):
         try:
             llm = get_llm()
@@ -80,20 +131,25 @@ with st.sidebar:
     # 3. Select Database to Ingest
     st.subheader("3. Ingest Database")
     if db_connected and databases:
-        selected_db = st.selectbox("Select Database to Ingest", databases)
-        if st.button("Ingest and Create Vector DB"):
-            with st.spinner(f"Reflecting schema for `{selected_db}` and ingesting..."):
-                try:
-                    # Set the environment variable so get_full_db_context uses it
-                    os.environ["MYSQL_DATABASE"] = selected_db
-                    context = get_full_db_context()
-                    if context:
-                        ingest_schema(context)
-                        st.success(f"✅ Successfully ingested `{selected_db}`!")
-                    else:
-                        st.error("Failed to extract context or schema is empty.")
-                except Exception as e:
-                    st.error(f"Ingestion failed: {e}")
+        selected_db = st.selectbox("Select Database to Ingest", databases, index=None, placeholder="Choose a database to ingest...")
+        if selected_db:
+            if st.button("Ingest and Create Vector DB"):
+                with st.spinner(f"Reflecting schema for `{selected_db}` and ingesting..."):
+                    try:
+                        # Set the environment variable so get_full_db_context uses it
+                        os.environ["MYSQL_DATABASE"] = selected_db
+                        st.info(f"Extracting schema for database: {selected_db}")
+                        context = get_full_db_context()
+                        if context and not context.startswith("Error"):
+                            st.info(f"Schema extracted ({len(context)} chars). Ingesting into Vector DB...")
+                            ingest_schema(context)
+                            st.success(f"✅ Successfully ingested `{selected_db}`!")
+                        else:
+                            st.error(f"Failed to extract context or schema is empty. Context: {context[:500]}...")
+                    except Exception as e:
+                        st.error(f"Ingestion failed: {e}")
+                        import traceback
+                        st.code(traceback.format_exc())
     elif not db_connected:
         st.info("Connect to database to see available schemas.")
     else:
@@ -102,38 +158,40 @@ with st.sidebar:
     # 4. Review Table Data
     st.subheader("4. Review Table Data")
     if db_connected and databases:
-        review_db = st.selectbox("Select Database to View", databases, key="review_db")
+        review_db = st.selectbox("Select Database to View", databases, index=None, placeholder="Choose a database to view data...", key="review_db")
         
-        # Get tables
-        tables = []
-        try:
-            password = os.getenv('MYSQL_PASSWORD', "").strip('\"\'')
-            encoded_password = urllib.parse.quote_plus(password) if password else ""
-            
-            user = os.getenv('MYSQL_USER', "").strip('\"\'')
-            host = os.getenv('MYSQL_HOST', "").strip('\"\'')
+        if review_db:
+            # Get tables
+            tables = []
+            try:
+                password = os.getenv('MYSQL_PASSWORD', "").strip('\"\'')
+                encoded_password = urllib.parse.quote_plus(password) if password else ""
+                
+                user = os.getenv('MYSQL_USER', "").strip('\"\'')
+                host = os.getenv('MYSQL_HOST', "").strip('\"\'')
 
-            url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{os.getenv('MYSQL_PORT', '3306').strip('\"\'')}/{review_db}"
-            print(f"Connecting to Target Database: mysql+pymysql://{user}:{encoded_password}@{host}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
-            target_engine = create_engine(url)
-            with target_engine.connect() as conn:
-                res = conn.execute(text("SHOW TABLES"))
-                tables = [row[0] for row in res]
-        except Exception as e:
-            pass
-            
-        if tables:
-            selected_table = st.selectbox("Select Table", tables)
-            if st.button("Review Table Data"):
-                try:
-                    with target_engine.connect() as conn:
-                        df = pd.read_sql(f"SELECT * FROM `{selected_table}` LIMIT 100", conn)
-                        st.session_state['review_data'] = df
-                        st.session_state['review_table_name'] = selected_table
-                except Exception as e:
-                    st.error(f"Error fetching data: {e}")
-        else:
-            st.info("No tables found in this database.")
+                url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{os.getenv('MYSQL_PORT', '3306').strip('\"\'')}/{review_db}"
+                print(f"Connecting to Target Database: mysql+pymysql://{user}:{encoded_password}@{host}:{os.getenv('MYSQL_PORT', '3306')}/{review_db}")
+                target_engine = create_engine(url)
+                with target_engine.connect() as conn:
+                    res = conn.execute(text("SHOW TABLES"))
+                    tables = [row[0] for row in res]
+            except Exception as e:
+                pass
+                
+            if tables:
+                selected_table = st.selectbox("Select Table", tables, index=None, placeholder="Choose a table...")
+                if selected_table:
+                    if st.button("Review Table Data"):
+                        try:
+                            with target_engine.connect() as conn:
+                                df = pd.read_sql(f"SELECT * FROM `{selected_table}` LIMIT 100", conn)
+                                st.session_state['review_data'] = df
+                                st.session_state['review_table_name'] = selected_table
+                        except Exception as e:
+                            st.error(f"Error fetching data: {e}")
+            else:
+                st.info("No tables found in this database.")
 
 # Main Chat Area
 if 'review_data' in st.session_state:

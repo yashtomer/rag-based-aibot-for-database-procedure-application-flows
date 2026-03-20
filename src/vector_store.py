@@ -26,18 +26,29 @@ def ingest_schema(text_content: str):
     WARNING: This clears the existing vector store to ensure no duplicates.
     """
     persist_directory = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
+    # Convert to absolute path to avoid ambiguity
+    persist_directory = os.path.abspath(persist_directory)
 
-    # Clear existing data for a fresh ingestion
+    # Clear existing data for a fresh ingestion by removing the entire directory
     if os.path.exists(persist_directory):
-        for filename in os.listdir(persist_directory):
-            file_path = os.path.join(persist_directory, filename)
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            except Exception as e:
-                print(f'Failed to delete {file_path}. Reason: {e}')
+        try:
+            shutil.rmtree(persist_directory)
+            print(f"Cleared existing vector store at {persist_directory}")
+        except Exception as e:
+            print(f'Warning: Failed to delete {persist_directory}. Reason: {e}')
+            # If we can't delete the whole directory, try deleting its contents
+            for filename in os.listdir(persist_directory):
+                file_path = os.path.join(persist_directory, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as ex:
+                    print(f'Failed to delete {file_path}. Reason: {ex}')
+    
+    # Ensure the directory exists
+    os.makedirs(persist_directory, exist_ok=True)
 
     vector_store = get_vector_store()
 
