@@ -18,50 +18,246 @@ st.set_page_config(page_title="DB Intelligence Bot", page_icon="🤖", layout="w
 if 'theme' not in st.session_state:
     st.session_state.theme = 'Light'
 
-# Custom CSS for theme
+# ---------------------------------------------------------------------------
+# Theme CSS — comprehensive overrides for EVERY Streamlit widget
+# ---------------------------------------------------------------------------
+_DARK_BG       = "#0E1117"
+_DARK_BG2      = "#161b22"
+_DARK_SIDEBAR  = "#1a1c24"
+_DARK_CARD     = "#21262d"
+_DARK_INPUT    = "#262730"
+_DARK_BORDER   = "#4a4d5a"
+_DARK_TEXT     = "#FAFAFA"
+_ACCENT        = "#ff4b4b"
+
 if st.session_state.theme == 'Dark':
-    st.markdown("""
+    st.markdown(f"""
         <style>
-        /* Dark Mode Styles */
-        .stApp {
-            background-color: #0E1117;
-            color: #FAFAFA;
-        }
-        section[data-testid="stSidebar"] {
-            background-color: #1a1c24;
-        }
-        .stButton>button {
-            background-color: #262730;
-            color: white;
-            border: 1px solid #4a4d5a;
-        }
-        .stSelectbox div[data-baseweb="select"] > div {
-            background-color: #262730;
-            color: white;
-        }
+        /* ===== ROOT / APP SHELL ===== */
+        .stApp,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stAppViewBlockContainer"],
+        .main .block-container {{
+            background-color: {_DARK_BG} !important;
+            color: {_DARK_TEXT} !important;
+        }}
+
+        [data-testid="stHeader"] {{
+            background-color: rgba(14, 17, 23, 0.9) !important;
+        }}
+        [data-testid="stToolbar"] {{
+            color: {_DARK_TEXT} !important;
+        }}
+
+        /* ===== SIDEBAR ===== */
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] > div {{
+            background-color: {_DARK_SIDEBAR} !important;
+            color: {_DARK_TEXT} !important;
+        }}
+
+        /* ===== BOTTOM BAR / CHAT INPUT ===== */
+        [data-testid="stBottom"],
+        [data-testid="stBottom"] > div,
+        [data-testid="stBottom"] > div > div,
+        [data-testid="stBottom"] > div > div > div,
+        [data-testid="stBottomBlockContainer"],
+        [data-testid="stBottomBlockContainer"] > div,
+        .stChatInput,
+        [data-testid="stChatInput"],
+        [data-testid="stChatInputContainer"],
+        .stChatInputContainer,
+        .stChatInput > div {{
+            background-color: {_DARK_BG} !important;
+        }}
+        [data-testid="stChatInput"] textarea,
+        .stChatInput textarea {{
+            background-color: {_DARK_INPUT} !important;
+            color: {_DARK_TEXT} !important;
+            border-color: {_DARK_BORDER} !important;
+        }}
+        /* Chat input send button area */
+        [data-testid="stChatInput"] button,
+        .stChatInput button {{
+            background-color: {_DARK_INPUT} !important;
+            color: {_DARK_TEXT} !important;
+        }}
+
+        /* ===== CHAT MESSAGES ===== */
+        [data-testid="stChatMessage"] {{
+            background-color: {_DARK_CARD} !important;
+            border: 1px solid {_DARK_BORDER};
+            border-radius: 10px;
+        }}
+
+        /* ===== BUTTONS ===== */
+        .stButton > button {{
+            background-color: {_DARK_INPUT} !important;
+            color: {_DARK_TEXT} !important;
+            border: 1px solid {_DARK_BORDER} !important;
+            transition: all 0.2s ease-in-out;
+        }}
+        .stButton > button:hover {{
+            border-color: {_ACCENT} !important;
+            color: {_ACCENT} !important;
+        }}
+
+        /* ===== SELECTBOX / DROPDOWNS ===== */
+        .stSelectbox div[data-baseweb="select"],
+        .stSelectbox div[data-baseweb="select"] > div,
+        .stSelectbox [data-baseweb="popover"],
+        div[data-baseweb="select"] > div {{
+            background-color: {_DARK_INPUT} !important;
+            color: {_DARK_TEXT} !important;
+            border-color: {_DARK_BORDER} !important;
+        }}
+        /* Placeholder text inside selectbox — Streamlit uses auto-generated
+           st-* classes for the placeholder div, so we must use a broad wildcard */
+        .stSelectbox div[data-baseweb="select"] div,
+        .stSelectbox div[data-baseweb="select"] span,
+        .stSelectbox div[data-baseweb="select"] input,
+        div[data-baseweb="select"] div,
+        div[data-baseweb="select"] span {{
+            color: {_DARK_TEXT} !important;
+            -webkit-text-fill-color: {_DARK_TEXT} !important;
+        }}
+        /* Dropdown list options */
+        div[data-baseweb="popover"],
+        ul[data-testid="stSelectboxVirtualDropdown"],
+        div[data-baseweb="menu"],
+        div[data-baseweb="popover"] li,
+        [data-baseweb="menu"] li {{
+            background-color: {_DARK_CARD} !important;
+            color: {_DARK_TEXT} !important;
+        }}
+        div[data-baseweb="popover"] li:hover,
+        [data-baseweb="menu"] li:hover {{
+            background-color: {_DARK_INPUT} !important;
+        }}
+
+        /* ===== TEXT INPUTS / TEXT AREAS ===== */
+        .stTextInput input,
+        .stTextArea textarea,
+        .stNumberInput input {{
+            background-color: {_DARK_INPUT} !important;
+            color: {_DARK_TEXT} !important;
+            border-color: {_DARK_BORDER} !important;
+        }}
+
+        /* ===== ALL TEXT ===== */
+        .stMarkdown, .stMarkdown p,
+        p, span, label,
+        h1, h2, h3, h4, h5, h6,
+        [data-testid="stWidgetLabel"] label,
+        .stRadio label,
+        .stCheckbox label {{
+            color: {_DARK_TEXT} !important;
+        }}
+
+        /* ===== ALERT BOXES (info, success, warning, error) ===== */
+        [data-testid="stAlert"],
+        .stAlert,
+        div[data-baseweb="notification"] {{
+            background-color: {_DARK_CARD} !important;
+            color: {_DARK_TEXT} !important;
+            border-color: {_DARK_BORDER} !important;
+        }}
+
+        /* ===== CODE BLOCKS ===== */
+        .stCodeBlock, pre, code {{
+            background-color: {_DARK_CARD} !important;
+            color: {_DARK_TEXT} !important;
+        }}
+
+        /* ===== DATAFRAME / TABLES ===== */
+        [data-testid="stDataFrame"],
+        .stDataFrame {{
+            background-color: {_DARK_SIDEBAR} !important;
+        }}
+
+        /* ===== EXPANDER ===== */
+        details[data-testid="stExpander"] {{
+            background-color: {_DARK_CARD} !important;
+            border-color: {_DARK_BORDER} !important;
+        }}
+        details[data-testid="stExpander"] summary {{
+            color: {_DARK_TEXT} !important;
+        }}
+
+        /* ===== DIVIDER / HR ===== */
+        hr {{
+            border-color: {_DARK_BORDER} !important;
+        }}
+
+        /* ===== SPINNER ===== */
+        .stSpinner > div {{
+            border-top-color: {_ACCENT} !important;
+        }}
+
+        /* ===== TOGGLE / CHECKBOX ===== */
+        [data-testid="stToggle"] label span {{
+            color: {_DARK_TEXT} !important;
+        }}
         </style>
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
         <style>
-        /* Light Mode Styles */
-        .stApp {
+        /* Light Mode — mostly defaults, just polish */
+        .stApp, [data-testid="stAppViewContainer"] {
             background-color: #FFFFFF;
             color: #262730;
+        }
+        [data-testid="stHeader"] {
+            background-color: rgba(255, 255, 255, 0.9) !important;
+        }
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] > div {
+            background-color: #f0f2f6;
+        }
+        .stButton > button {
+            transition: all 0.2s ease-in-out;
+        }
+        .stButton > button:hover {
+            border-color: #ff4b4b;
+            color: #ff4b4b;
         }
         </style>
     """, unsafe_allow_html=True)
 
-st.title("🤖 Database Intelligence Bot")
+# --- Branded Header with Aeologic Logo ---
+import base64
+
+def get_logo_base64():
+    logo_path = os.path.join(os.path.dirname(__file__), "assets", "aeologo.png")
+    try:
+        with open(logo_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except FileNotFoundError:
+        return None
+
+_logo_b64 = get_logo_base64()
+if _logo_b64:
+    st.markdown(f"""
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
+            <img src="data:image/png;base64,{_logo_b64}" alt="Aeologic Logo" style="height: 48px;">
+            <h1 style="margin: 0; padding: 0; font-size: 2rem;">Database Intelligence Bot</h1>
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    st.title("🤖 Database Intelligence Bot")
 
 with st.sidebar:
     st.header("⚙️ System Configuration")
     
-    # Theme Toggle
-    if st.button("🌓 Toggle Dark/Light Mode"):
-        st.session_state.theme = "Dark" if st.session_state.theme == "Light" else "Light"
+    # Theme Toggle UI
+    dark_mode = st.toggle("🌓 Dark Mode", value=(st.session_state.theme == "Dark"))
+    if dark_mode and st.session_state.theme != "Dark":
+        st.session_state.theme = "Dark"
         st.rerun()
-
+    elif not dark_mode and st.session_state.theme != "Light":
+        st.session_state.theme = "Light"
+        st.rerun()
     # 1. Check LLM Connectivity
     st.subheader("1. LLM Status")
     try:
