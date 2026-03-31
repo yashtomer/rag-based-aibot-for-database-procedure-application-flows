@@ -64,11 +64,38 @@ def format_llm_error(e: Exception) -> tuple[str, str]:
 
 
 def render_mermaid(mermaid_code: str):
-    """Render a Mermaid diagram as an image using mermaid.ink."""
-    import base64
-    encoded = base64.urlsafe_b64encode(mermaid_code.encode("utf-8")).decode("ascii")
-    img_url = f"https://mermaid.ink/img/{encoded}"
-    st.image(img_url, use_container_width=True)
+    """Render a Mermaid diagram using Mermaid JS CDN in a non-focusable iframe."""
+    import hashlib
+    uid = "m" + hashlib.md5(mermaid_code.encode()).hexdigest()[:8]
+    # Escape backticks and backslashes for safe embedding in HTML
+    safe_code = mermaid_code.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
+    html = f"""
+    <html>
+    <head>
+        <script type="module">
+            import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+            mermaid.initialize({{ startOnLoad: false, theme: 'default' }});
+            const el = document.getElementById('{uid}');
+            try {{
+                const {{ svg }} = await mermaid.render('{uid}_svg', el.textContent);
+                el.innerHTML = svg;
+            }} catch (e) {{
+                el.innerHTML = '<pre style="color:red;">Diagram rendering error: ' + e.message + '</pre>';
+            }}
+            // Notify parent frame of actual content height
+            const height = document.body.scrollHeight;
+            window.parent.postMessage({{ type: 'streamlit:setFrameHeight', height: height }}, '*');
+            // Remove focus from iframe so chat input stays usable
+            window.blur();
+            if (window.parent) window.parent.focus();
+        </script>
+    </head>
+    <body style="margin:0;display:flex;justify-content:center;background:transparent;">
+        <div id="{uid}" style="width:100%;">{safe_code}</div>
+    </body>
+    </html>
+    """
+    st.components.v1.html(html, height=600, scrolling=True)
     with st.expander("View Mermaid source"):
         st.code(mermaid_code, language="mermaid")
 
