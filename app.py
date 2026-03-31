@@ -1,18 +1,66 @@
 import streamlit as st
 import os
+import re
 import urllib.parse
 import pandas as pd
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
-from src.rag import get_chat_response, get_llm
+from src.rag import get_chat_response, get_llm, LLM_PROVIDERS, fetch_models
 from src.database import get_full_db_context
-from src.vector_store import ingest_schema
+from src.vector_store import ingest_schema, fetch_embedding_models
 
 # Load env variables
 load_dotenv()
 
 st.set_page_config(page_title="DB Intelligence Bot", page_icon="🤖", layout="wide")
+
+
+def format_llm_error(e: Exception) -> tuple[str, str]:
+    """Parse LLM exceptions into a user-friendly (title, detail) pair."""
+    err = str(e)
+
+    # Context length exceeded
+    if "context_length_exceeded" in err or "reduce the length" in err.lower():
+        return (
+            "📏 Context Length Exceeded",
+            "The input is too long for the selected model. Try a model with a larger context window or ask a more specific question.",
+        )
+
+    # Quota / rate-limit errors
+    if "429" in err or "RESOURCE_EXHAUSTED" in err or "rate" in err.lower():
+        # Extract retry delay if present
+        retry_match = re.search(r"retry(?:\s+in|Delay['\"]:\s*['\"])?\s*([\d.]+)\s*s", err, re.IGNORECASE)
+        retry_hint = f"  \nRetry in **{int(float(retry_match.group(1)))} seconds**." if retry_match else ""
+        return (
+            "⚠️ API Quota Exceeded",
+            f"You've hit the rate limit for this model. "
+            f"Please try a different model, switch providers, or wait and retry.{retry_hint}",
+        )
+
+    # Auth errors
+    if "401" in err or "403" in err or "PERMISSION_DENIED" in err or "invalid" in err.lower() and "key" in err.lower():
+        return (
+            "🔑 Authentication Failed",
+            "The API key is invalid or missing permissions. Please check your `.env` file.",
+        )
+
+    # Model not found
+    if "404" in err or "not found" in err.lower():
+        return (
+            "🔍 Model Not Found",
+            "The selected model is not available. Please choose a different model from the dropdown.",
+        )
+
+    # Timeout
+    if "timeout" in err.lower():
+        return (
+            "⏱️ Request Timed Out",
+            "The LLM took too long to respond. Please try again.",
+        )
+
+    # Generic fallback
+    return ("❌ LLM Error", str(e))
 
 # Theme state management
 if 'theme' not in st.session_state:
@@ -259,23 +307,70 @@ with st.sidebar:
         st.session_state.theme = "Light"
         st.rerun()
     # 1. Check LLM Connectivity
-    st.subheader("1. LLM Status")
-    try:
-        llm = get_llm()
-        # Use .model attribute which is passed in constructor
-        model_display = getattr(llm, 'model', 'gemini-flash-latest')
-        st.info(f"Selected Model: `{model_display}`")
-    except Exception as e:
-        st.error(f"Error identifying LLM: {e}")
+    st.subheader("1. LLM Provider")
+    selected_provider = st.selectbox(
+        "Select LLM Provider",
+        list(LLM_PROVIDERS.keys()),
+        index=0,
+        key="llm_provider",
+    )
+
+    # Fetch models live, cache per provider in session state
+    cache_key = f"models_{selected_provider}"
+    details_key = f"model_details_{selected_provider}"
+    if cache_key not in st.session_state:
+        with st.spinner("Fetching available models..."):
+            models_list, models_details = fetch_models(selected_provider)
+            st.session_state[cache_key] = models_list
+            st.session_state[details_key] = models_details
+
+    available_models = st.session_state[cache_key]
+
+    col_model, col_refresh = st.columns([4, 1])
+    with col_model:
+        selected_model = st.selectbox(
+            "Select Model",
+            available_models,
+            index=0,
+            key="llm_model",
+        )
+    with col_refresh:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔄", help="Refresh model list"):
+            models_list, models_details = fetch_models(selected_provider)
+            st.session_state[cache_key] = models_list
+            st.session_state[details_key] = models_details
+            st.rerun()
 
     if st.button("Check LLM Connectivity"):
         try:
-            llm = get_llm()
-            # Simple test prompt
+            llm = get_llm(selected_provider, selected_model)
             response = llm.invoke("Say the exact word: Connected")
             st.success("✅ LLM Connected successfully!")
         except Exception as e:
-            st.error(f"❌ LLM Connection failed: {e}")
+            title, detail = format_llm_error(e)
+            st.error(f"**{title}**\n\n{detail}")
+
+    st.markdown("---")
+    st.subheader("Embedding Model")
+    st.caption("Powered by Google (Groq does not offer embedding models)")
+    if "embedding_models" not in st.session_state:
+        with st.spinner("Fetching embedding models..."):
+            st.session_state["embedding_models"] = fetch_embedding_models()
+
+    col_emb, col_emb_refresh = st.columns([4, 1])
+    with col_emb:
+        selected_embedding = st.selectbox(
+            "Select Embedding Model",
+            st.session_state["embedding_models"],
+            index=0,
+            key="embedding_model",
+        )
+    with col_emb_refresh:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔄", help="Refresh embedding model list", key="refresh_emb"):
+            st.session_state["embedding_models"] = fetch_embedding_models()
+            st.rerun()
 
     # 2. Check Database Connectivity
     st.subheader("2. Database Status")
@@ -338,7 +433,7 @@ with st.sidebar:
                         context = get_full_db_context()
                         if context and not context.startswith("Error"):
                             st.info(f"Schema extracted ({len(context)} chars). Ingesting into Vector DB...")
-                            ingest_schema(context)
+                            ingest_schema(context, st.session_state.get("embedding_model"))
                             st.success(f"✅ Successfully ingested `{selected_db}`!")
                         else:
                             st.error(f"Failed to extract context or schema is empty. Context: {context[:500]}...")
@@ -386,8 +481,52 @@ with st.sidebar:
                                 st.session_state['review_table_name'] = selected_table
                         except Exception as e:
                             st.error(f"Error fetching data: {e}")
+
+                    # Fetch columns and store example queries for main area
+                    try:
+                        with target_engine.connect() as conn:
+                            cols_result = conn.execute(text(f"SHOW COLUMNS FROM `{selected_table}`"))
+                            columns = [row[0] for row in cols_result]
+                    except Exception:
+                        columns = []
+
+                    if columns:
+                        example_queries = [
+                            f"What are all the columns in the `{selected_table}` table?",
+                            f"Describe the structure and purpose of the `{selected_table}` table.",
+                            f"Which tables have a relationship with `{selected_table}`?",
+                            f"What is the data type of `{columns[0]}` in `{selected_table}`?",
+                        ]
+                        if len(columns) > 1:
+                            example_queries.append(
+                                f"How are `{columns[0]}` and `{columns[1]}` used in `{selected_table}`?"
+                            )
+                        st.session_state["example_queries"] = example_queries
+                    else:
+                        st.session_state.pop("example_queries", None)
             else:
                 st.info("No tables found in this database.")
+
+# Model Details Panel
+_provider = st.session_state.get("llm_provider", "Gemini (Google)")
+_model = st.session_state.get("llm_model")
+_details_key = f"model_details_{_provider}"
+_model_info = st.session_state.get(_details_key, {}).get(_model)
+if _model_info:
+    st.markdown(f"**📋 Model Info: {_model}**")
+    ctx = _model_info.get("context_window", "N/A")
+    ctx_display = f"{ctx:,}" if isinstance(ctx, int) else str(ctx)
+    out = _model_info.get("max_output_tokens", "N/A")
+    out_display = f"{out:,}" if isinstance(out, int) else str(out)
+    st.markdown(
+        f"**Provider:** {_model_info.get('owner', 'N/A')} &nbsp;|&nbsp; "
+        f"**Context Window:** {ctx_display} tokens &nbsp;|&nbsp; "
+        f"**Max Output:** {out_display} tokens"
+    )
+    desc = _model_info.get("description", "")
+    if desc and desc != "N/A":
+        st.caption(desc)
+    st.markdown("---")
 
 # Main Chat Area
 if 'review_data' in st.session_state:
@@ -396,6 +535,17 @@ if 'review_data' in st.session_state:
     if st.button("Close Data View"):
         del st.session_state['review_data']
         st.rerun()
+    st.markdown("---")
+
+# Example queries section
+if "example_queries" in st.session_state:
+    st.markdown("**💡 Example queries:**")
+    cols = st.columns(2)
+    for i, eq in enumerate(st.session_state["example_queries"]):
+        with cols[i % 2]:
+            if st.button(eq, key=f"eq_{eq}"):
+                st.session_state["prefill_query"] = eq
+                st.rerun()
     st.markdown("---")
 
 # Initialize chat history
@@ -407,8 +557,11 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+# Handle prefilled query from example buttons
+prefill = st.session_state.pop("prefill_query", None)
+
 # React to user input
-if prompt := st.chat_input("Ask about your database..."):
+if prompt := (prefill or st.chat_input("Ask about your database...")):
     # Display user message in chat message container
     st.chat_message("user").markdown(prompt)
     # Add user message to chat history
@@ -419,8 +572,14 @@ if prompt := st.chat_input("Ask about your database..."):
         with st.spinner("Thinking..."):
             try:
                 # Need to ensure vector db exists, but rag.py handles invoking retrieval
-                response_text = get_chat_response(prompt)
+                response_text = get_chat_response(
+                    prompt,
+                    st.session_state.get("llm_provider", "Gemini (Google)"),
+                    st.session_state.get("llm_model"),
+                    st.session_state.get("embedding_model"),
+                )
                 st.markdown(response_text)
                 st.session_state.messages.append({"role": "assistant", "content": response_text})
             except Exception as e:
-                st.error(f"Error generating response: {e}")
+                title, detail = format_llm_error(e)
+                st.error(f"**{title}**\n\n{detail}")
