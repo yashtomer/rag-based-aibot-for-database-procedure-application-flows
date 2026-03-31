@@ -6,7 +6,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
-from src.rag import get_chat_response, get_llm, LLM_PROVIDERS, fetch_models
+from src.rag import get_chat_response, get_diagram_response, get_llm, LLM_PROVIDERS, fetch_models
 from src.database import get_full_db_context
 from src.vector_store import ingest_schema, fetch_embedding_models
 
@@ -61,6 +61,34 @@ def format_llm_error(e: Exception) -> tuple[str, str]:
 
     # Generic fallback
     return ("❌ LLM Error", str(e))
+
+
+def render_mermaid(mermaid_code: str):
+    """Render a Mermaid diagram as an image using mermaid.ink."""
+    import base64
+    encoded = base64.urlsafe_b64encode(mermaid_code.encode("utf-8")).decode("ascii")
+    img_url = f"https://mermaid.ink/img/{encoded}"
+    st.image(img_url, use_container_width=True)
+    with st.expander("View Mermaid source"):
+        st.code(mermaid_code, language="mermaid")
+
+
+def render_message(content: str):
+    """Render a chat message, handling mermaid code blocks specially."""
+    if "```mermaid" in content:
+        parts = content.split("```mermaid")
+        st.markdown(parts[0])
+        for part in parts[1:]:
+            if "```" in part:
+                mermaid_code, rest = part.split("```", 1)
+                render_mermaid(mermaid_code.strip())
+                if rest.strip():
+                    st.markdown(rest.strip())
+            else:
+                st.markdown(part)
+    else:
+        st.markdown(content)
+
 
 # Theme state management
 if 'theme' not in st.session_state:
@@ -308,10 +336,11 @@ with st.sidebar:
         st.rerun()
     # 1. Check LLM Connectivity
     st.subheader("1. LLM Provider")
+    _providers = list(LLM_PROVIDERS.keys())
     selected_provider = st.selectbox(
         "Select LLM Provider",
-        list(LLM_PROVIDERS.keys()),
-        index=0,
+        _providers,
+        index=_providers.index("Groq") if "Groq" in _providers else 0,
         key="llm_provider",
     )
 
@@ -326,12 +355,18 @@ with st.sidebar:
 
     available_models = st.session_state[cache_key]
 
+    # Default to kimi-k2-instruct-0905 for Groq
+    _default_model = "moonshotai/kimi-k2-instruct-0905"
+    _model_index = 0
+    if selected_provider == "Groq" and _default_model in available_models:
+        _model_index = available_models.index(_default_model)
+
     col_model, col_refresh = st.columns([4, 1])
     with col_model:
         selected_model = st.selectbox(
             "Select Model",
             available_models,
-            index=0,
+            index=_model_index,
             key="llm_model",
         )
     with col_refresh:
@@ -496,6 +531,7 @@ with st.sidebar:
                             f"Describe the structure and purpose of the `{selected_table}` table.",
                             f"Which tables have a relationship with `{selected_table}`?",
                             f"What is the data type of `{columns[0]}` in `{selected_table}`?",
+                            f"Show ER diagram for `{selected_table}` and its related tables",
                         ]
                         if len(columns) > 1:
                             example_queries.append(
@@ -555,7 +591,7 @@ if "messages" not in st.session_state:
 # Display chat messages from history on app rerun
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        render_message(message["content"])
 
 # Handle prefilled query from example buttons
 prefill = st.session_state.pop("prefill_query", None)
@@ -567,19 +603,40 @@ if prompt := (prefill or st.chat_input("Ask about your database...")):
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
 
+    # Detect if user is asking for a diagram
+    _diagram_keywords = ["er diagram", "erd", "entity relationship", "diagram", "visualize", "schema diagram", "draw", "show diagram", "generate diagram", "relationship diagram"]
+    _is_diagram_request = any(kw in prompt.lower() for kw in _diagram_keywords)
+
     # Get response from RAG system
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
+        with st.spinner("Generating diagram..." if _is_diagram_request else "Thinking..."):
             try:
-                # Need to ensure vector db exists, but rag.py handles invoking retrieval
-                response_text = get_chat_response(
-                    prompt,
-                    st.session_state.get("llm_provider", "Gemini (Google)"),
-                    st.session_state.get("llm_model"),
-                    st.session_state.get("embedding_model"),
-                )
-                st.markdown(response_text)
-                st.session_state.messages.append({"role": "assistant", "content": response_text})
+                _llm_provider = st.session_state.get("llm_provider", "Gemini (Google)")
+                _llm_model = st.session_state.get("llm_model")
+                _emb_model = st.session_state.get("embedding_model")
+
+                if _is_diagram_request:
+                    response_text = get_diagram_response(prompt, _llm_provider, _llm_model, _emb_model)
+                    # Extract mermaid code from response
+                    mermaid_code = response_text
+                    if "```mermaid" in mermaid_code:
+                        mermaid_code = mermaid_code.split("```mermaid")[1].split("```")[0].strip()
+                    elif "```" in mermaid_code:
+                        mermaid_code = mermaid_code.split("```")[1].split("```")[0].strip()
+
+                    # Render the Mermaid diagram
+                    st.markdown("Here's the ER diagram for your database:")
+                    render_mermaid(mermaid_code)
+
+                    # Store both text and mermaid code for history
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": f"Here's the ER diagram for your database:\n\n```mermaid\n{mermaid_code}\n```",
+                    })
+                else:
+                    response_text = get_chat_response(prompt, _llm_provider, _llm_model, _emb_model)
+                    st.markdown(response_text)
+                    st.session_state.messages.append({"role": "assistant", "content": response_text})
             except Exception as e:
                 title, detail = format_llm_error(e)
                 st.error(f"**{title}**\n\n{detail}")

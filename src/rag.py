@@ -146,19 +146,47 @@ def get_chat_response(query: str, provider: str = "Gemini (Google)", model: str 
 def get_diagram_response(query: str, provider: str = "Gemini (Google)", model: str = None, embedding_model: str = None) -> str:
     """
     Generates Mermaid.js diagram syntax based on the request and schema context.
+    Uses full database schema for complete ER diagrams.
     """
-    vector_store = get_vector_store(embedding_model)
-    retriever = vector_store.as_retriever(search_kwargs={"k": _retriever_k(provider)})
+    from src.database import get_full_db_context
+
+    # For ER diagrams, use the full schema so no tables are missed
+    full_db_keywords = ["entire", "full", "complete", "all tables", "whole", "database"]
+    _use_full_schema = any(kw in query.lower() for kw in full_db_keywords) or "er diagram" in query.lower() or "erd" in query.lower()
+
+    if _use_full_schema:
+        try:
+            context = get_full_db_context()
+        except Exception:
+            context = None
+
+    if not _use_full_schema or not context:
+        vector_store = get_vector_store(embedding_model)
+        retriever = vector_store.as_retriever(search_kwargs={"k": 10})
+        docs = retriever.invoke(query)
+        context = format_docs(docs)
+
     llm = get_llm(provider, model)
 
     template = """You are an expert in data visualization and Mermaid.js.
     Use the following database schema context to generate a Mermaid diagram that satisfies the user's request.
+    IMPORTANT: Include ALL tables and ALL relationships from the schema. Do not skip any table.
 
     The output must be ONLY the Mermaid code block, starting with ```mermaid and ending with ```.
     Do not include any other text or explanation.
 
     If the request implies an Entity Relationship Diagram (ERD), use `erDiagram`.
     If the request implies a flow or process, use `graph TD` or `sequenceDiagram` as appropriate.
+
+    For erDiagram, use this format for each table:
+    TableName {{
+        type column_name PK "comment"
+        type column_name FK
+        type column_name
+    }}
+
+    And show relationships like:
+    TableA ||--o{{ TableB : "foreign_key"
 
     Context:
     {context}
@@ -169,16 +197,7 @@ def get_diagram_response(query: str, provider: str = "Gemini (Google)", model: s
 
     prompt = ChatPromptTemplate.from_template(template)
 
-    rag_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
+    chain = prompt | llm | StrOutputParser()
+    response = chain.invoke({"context": context, "question": query})
 
-    response = rag_chain.invoke(query)
-
-    # Clean up response to ensure it's just the code if the LLM is chatty
-    # But prompt says ONLY, usually reliable.
-    # We can strip the markdown blocks if needed by the frontend, but returning them is fine too.
     return response
