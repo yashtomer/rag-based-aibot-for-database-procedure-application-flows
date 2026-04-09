@@ -13,7 +13,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 # Install provider-specific LangChain integrations used at runtime
-RUN ./.venv/bin/pip install --no-cache-dir langchain-openai langchain-anthropic
+RUN uv pip install --python /app/.venv/bin/python --no-cache-dir langchain-openai langchain-anthropic
 
 # Copy the rest of the application code
 COPY . .
