@@ -92,9 +92,15 @@ def fetch_models(provider: str, api_key: str = None) -> tuple[list[str], dict]:
             # We will use the fallback list but we could attempt to use their Models API if available.
             return (sorted(FALLBACK_MODELS[provider]), {})
 
+        elif provider == "Groq":
+            return (sorted(FALLBACK_MODELS[provider]), {})
+
     except Exception as e:
         print(f"Error fetching models for {provider}: {e}")
         return FALLBACK_MODELS.get(provider, []), {}
+
+    # Safety fallback for any unhandled provider branch.
+    return FALLBACK_MODELS.get(provider, []), {}
 
 
 def get_llm(provider: str = "Gemini (Google)", model: str = None, api_key: str = None):
