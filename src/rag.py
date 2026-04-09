@@ -17,18 +17,26 @@ LLM_PROVIDERS = {
     "Groq": {
         "env_key": "GROQ_API_KEY",
     },
+    "OpenAI": {
+        "env_key": "OPENAI_API_KEY",
+    },
+    "Anthropic": {
+        "env_key": "ANTHROPIC_API_KEY",
+    },
 }
 
 FALLBACK_MODELS = {
     "Gemini (Google)": ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"],
     "Groq": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+    "OpenAI": ["gpt-4o", "gpt-4o-mini", "o1-preview", "gpt-4-turbo"],
+    "Anthropic": ["claude-3-5-sonnet-latest", "claude-3-5-haiku-latest", "claude-3-opus-latest"],
 }
 
 
-def fetch_models(provider: str) -> tuple[list[str], dict]:
+def fetch_models(provider: str, api_key: str = None) -> tuple[list[str], dict]:
     """Fetch available models live from the provider API.
     Returns (sorted model names, {model_name: details_dict})."""
-    api_key = os.getenv(LLM_PROVIDERS[provider]["env_key"])
+    api_key = api_key or os.getenv(LLM_PROVIDERS[provider]["env_key"])
     if not api_key:
         return FALLBACK_MODELS.get(provider, []), {}
 
@@ -54,37 +62,46 @@ def fetch_models(provider: str) -> tuple[list[str], dict]:
                     }
             return (sorted(models), details) if models else (FALLBACK_MODELS[provider], {})
 
-        elif provider == "Groq":
+        elif provider == "OpenAI":
             resp = requests.get(
-                "https://api.groq.com/openai/v1/models",
+                "https://api.openai.com/v1/models",
                 headers={"Authorization": f"Bearer {api_key}"},
                 timeout=10,
             )
             resp.raise_for_status()
             models = []
             details = {}
+            # Filter for common chat models to avoid clutter
+            chat_patterns = ["gpt-4", "gpt-3.5", "o1-"]
             for m in resp.json().get("data", []):
-                if m.get("active", True):
-                    mid = m["id"]
+                mid = m["id"]
+                if any(p in mid for p in chat_patterns):
                     models.append(mid)
                     details[mid] = {
                         "display_name": mid,
-                        "description": f"Owned by {m.get('owned_by', 'N/A')}",
-                        "context_window": m.get("context_window", "N/A"),
-                        "max_output_tokens": m.get("max_completion_tokens", "N/A"),
-                        "owner": m.get("owned_by", "N/A"),
+                        "description": f"OpenAI Chat Model",
+                        "context_window": "N/A",  # OpenAI API doesn't provide this in models list
+                        "max_output_tokens": "N/A",
+                        "owner": "OpenAI",
                     }
             return (sorted(models), details) if models else (FALLBACK_MODELS[provider], {})
 
-    except Exception:
+        elif provider == "Anthropic":
+            # Anthropic doesn't have a simple public 'list models' endpoint like OpenAI/Groq
+            # that returns all available chat models with detailed info.
+            # We will use the fallback list but we could attempt to use their Models API if available.
+            return (sorted(FALLBACK_MODELS[provider]), {})
+
+    except Exception as e:
+        print(f"Error fetching models for {provider}: {e}")
         return FALLBACK_MODELS.get(provider, []), {}
 
 
-def get_llm(provider: str = "Gemini (Google)", model: str = None):
+def get_llm(provider: str = "Gemini (Google)", model: str = None, api_key: str = None):
     config = LLM_PROVIDERS[provider]
-    api_key = os.getenv(config["env_key"])
+    api_key = api_key or os.getenv(config["env_key"])
     if not api_key:
-        raise ValueError(f"{config['env_key']} environment variable is not set")
+        raise ValueError(f"API key for {provider} is not set. Please provide it in the UI or set {config['env_key']} in .env")
 
     model = model or FALLBACK_MODELS[provider][0]
 
@@ -96,8 +113,24 @@ def get_llm(provider: str = "Gemini (Google)", model: str = None):
             timeout=30,
             max_retries=2,
         )
-    else:
+    elif provider == "Groq":
         return ChatGroq(
+            model=model,
+            api_key=api_key,
+            temperature=0,
+            max_retries=2,
+        )
+    elif provider == "OpenAI":
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model=model,
+            api_key=api_key,
+            temperature=0,
+            max_retries=2,
+        )
+    elif provider == "Anthropic":
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(
             model=model,
             api_key=api_key,
             temperature=0,
@@ -112,13 +145,13 @@ def _retriever_k(provider: str) -> int:
     return 3 if provider == "Groq" else 5
 
 
-def get_chat_response(query: str, provider: str = "Gemini (Google)", model: str = None, embedding_model: str = None) -> str:
+def get_chat_response(query: str, provider: str = "Gemini (Google)", model: str = None, embedding_model: str = None, api_key: str = None) -> str:
     """
     Retrieves context and answers a natural language question about the database.
     """
     vector_store = get_vector_store(embedding_model)
     retriever = vector_store.as_retriever(search_kwargs={"k": _retriever_k(provider)})
-    llm = get_llm(provider, model)
+    llm = get_llm(provider, model, api_key)
 
     template = """You are an expert database engineer and architect.
     Use the following pieces of retrieved database schema context to answer the user's question.
@@ -143,7 +176,7 @@ def get_chat_response(query: str, provider: str = "Gemini (Google)", model: str 
 
     return rag_chain.invoke(query)
 
-def get_diagram_response(query: str, provider: str = "Gemini (Google)", model: str = None, embedding_model: str = None) -> str:
+def get_diagram_response(query: str, provider: str = "Gemini (Google)", model: str = None, embedding_model: str = None, api_key: str = None) -> str:
     """
     Generates Mermaid.js diagram syntax based on the request and schema context.
     Uses full database schema for complete ER diagrams.
@@ -166,7 +199,7 @@ def get_diagram_response(query: str, provider: str = "Gemini (Google)", model: s
         docs = retriever.invoke(query)
         context = format_docs(docs)
 
-    llm = get_llm(provider, model)
+    llm = get_llm(provider, model, api_key)
 
     template = """You are an expert in data visualization and Mermaid.js.
     Use the following database schema context to generate a Mermaid diagram that satisfies the user's request.

@@ -367,16 +367,42 @@ with st.sidebar:
     selected_provider = st.selectbox(
         "Select LLM Provider",
         _providers,
-        index=_providers.index("Groq") if "Groq" in _providers else 0,
+        index=_providers.index("Gemini (Google)"),
         key="llm_provider",
     )
+
+    # API Key Handling
+    provider_config = LLM_PROVIDERS.get(selected_provider, {})
+    env_key_name = provider_config.get("env_key")
+    
+    # Store API keys in session state to persist between selection changes
+    if "api_keys" not in st.session_state:
+        st.session_state.api_keys = {}
+    
+    # Pre-fill from .env if available
+    default_key = st.session_state.api_keys.get(selected_provider, os.getenv(env_key_name, ""))
+    
+    user_api_key = st.text_input(
+        f"API Key for {selected_provider}",
+        value=default_key,
+        type="password",
+        help=f"Enter your {selected_provider} API key. Overrides {env_key_name} in .env if provided.",
+        key=f"api_key_input_{selected_provider}"
+    )
+    
+    if user_api_key != st.session_state.api_keys.get(selected_provider):
+        st.session_state.api_keys[selected_provider] = user_api_key
+        # Clear model cache if API key changes
+        if f"models_{selected_provider}" in st.session_state:
+            del st.session_state[f"models_{selected_provider}"]
+        st.rerun()
 
     # Fetch models live, cache per provider in session state
     cache_key = f"models_{selected_provider}"
     details_key = f"model_details_{selected_provider}"
     if cache_key not in st.session_state:
-        with st.spinner("Fetching available models..."):
-            models_list, models_details = fetch_models(selected_provider)
+        with st.spinner(f"Fetching {selected_provider} models..."):
+            models_list, models_details = fetch_models(selected_provider, user_api_key)
             st.session_state[cache_key] = models_list
             st.session_state[details_key] = models_details
 
@@ -399,19 +425,27 @@ with st.sidebar:
     with col_refresh:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🔄", help="Refresh model list"):
-            models_list, models_details = fetch_models(selected_provider)
+            models_list, models_details = fetch_models(selected_provider, user_api_key)
             st.session_state[cache_key] = models_list
             st.session_state[details_key] = models_details
             st.rerun()
 
     if st.button("Check LLM Connectivity"):
         try:
-            llm = get_llm(selected_provider, selected_model)
+            llm = get_llm(selected_provider, selected_model, user_api_key)
             response = llm.invoke("Say the exact word: Connected")
             st.success("✅ LLM Connected successfully!")
         except Exception as e:
             title, detail = format_llm_error(e)
             st.error(f"**{title}**\n\n{detail}")
+
+    if st.button("🗑️ Clear Session Keys", help="Wipe all API keys from this session's memory"):
+        st.session_state.api_keys = {}
+        # Also clear any cached model lists
+        for key in list(st.session_state.keys()):
+            if key.startswith("models_") or key.startswith("model_details_"):
+                del st.session_state[key]
+        st.rerun()
 
     st.markdown("---")
     st.subheader("Embedding Model")
@@ -641,9 +675,10 @@ if prompt := (prefill or st.chat_input("Ask about your database...")):
                 _llm_provider = st.session_state.get("llm_provider", "Gemini (Google)")
                 _llm_model = st.session_state.get("llm_model")
                 _emb_model = st.session_state.get("embedding_model")
+                _api_key = st.session_state.api_keys.get(_llm_provider)
 
                 if _is_diagram_request:
-                    response_text = get_diagram_response(prompt, _llm_provider, _llm_model, _emb_model)
+                    response_text = get_diagram_response(prompt, _llm_provider, _llm_model, _emb_model, _api_key)
                     # Extract mermaid code from response
                     mermaid_code = response_text
                     if "```mermaid" in mermaid_code:
@@ -661,7 +696,7 @@ if prompt := (prefill or st.chat_input("Ask about your database...")):
                         "content": f"Here's the ER diagram for your database:\n\n```mermaid\n{mermaid_code}\n```",
                     })
                 else:
-                    response_text = get_chat_response(prompt, _llm_provider, _llm_model, _emb_model)
+                    response_text = get_chat_response(prompt, _llm_provider, _llm_model, _emb_model, _api_key)
                     st.markdown(response_text)
                     st.session_state.messages.append({"role": "assistant", "content": response_text})
             except Exception as e:
