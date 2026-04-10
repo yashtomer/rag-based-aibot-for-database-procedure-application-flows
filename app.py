@@ -409,7 +409,7 @@ with st.sidebar:
     available_models = st.session_state[cache_key]
 
     # Default to kimi-k2-instruct-0905 for Groq
-    _default_model = "moonshotai/kimi-k2-instruct-0905"
+    _default_model = "llama-4-70b"
     _model_index = 0
     if selected_provider == "Groq" and _default_model in available_models:
         _model_index = available_models.index(_default_model)

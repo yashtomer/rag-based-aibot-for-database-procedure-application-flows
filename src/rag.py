@@ -26,10 +26,10 @@ LLM_PROVIDERS = {
 }
 
 FALLBACK_MODELS = {
-    "Gemini (Google)": ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"],
-    "Groq": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
-    "OpenAI": ["gpt-4o", "gpt-4o-mini", "o1-preview", "gpt-4-turbo"],
-    "Anthropic": ["claude-3-5-sonnet-latest", "claude-3-5-haiku-latest", "claude-3-opus-latest"],
+    "Gemini (Google)": ["gemini-3.1-pro", "gemini-3.1-flash", "gemini-2.5-pro", "gemini-2.5-flash","gemini-2.5-flash-lite"],
+    "Groq": ["llama-4-70b", "llama-4-8b", "deepseek-r1-distill-llama-70b", "mistral-saba-24b"],
+    "OpenAI": ["gpt-5.4-pro", "gpt-5.4-thinking", "gpt-5.4-mini"],
+    "Anthropic": ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5-20251001", "claude-sonnet-3-7"],
 }
 
 
@@ -72,7 +72,7 @@ def fetch_models(provider: str, api_key: str = None) -> tuple[list[str], dict]:
             models = []
             details = {}
             # Filter for common chat models to avoid clutter
-            chat_patterns = ["gpt-4", "gpt-3.5", "o1-"]
+            chat_patterns = ["gpt-5", "gpt-4", "o1-"]
             for m in resp.json().get("data", []):
                 mid = m["id"]
                 if any(p in mid for p in chat_patterns):
