@@ -1,158 +1,251 @@
-# Database Intelligence Bot
+# 🤖 Aeologic Database Intelligence Bot Console
 
-A RAG-based AI bot designed to assist with database-related tasks using Google Gemini and ChromaDB. It can answer natural language questions about your database schema and generate Mermaid.js diagrams.
+A state-of-the-art, secure, RAG-based intelligence engine powered by LangChain, ChromaDB, and a dynamic multi-model LLM gateway (Gemini, OpenAI, Anthropic, and Groq). This system introspects complex MySQL database schemas, analyses tables and relationships, generates high-fidelity Entity Relationship Diagrams (ERDs) using Mermaid.js, and produces documentation in real time.
 
-## Prerequisites
+All styled in a gorgeous, atmospheric **"Dark Luxe"** glassmorphic dashboard!
 
-- **Python 3.10+**
-- **MySQL Database**
-- **Google Gemini API Key**
-- **uv** (An extremely fast Python package installer and resolver)
+---
 
-## Installation
+## ✨ System Features
 
-1. Clone the repository.
-2. Install dependencies using `uv`:
-   ```bash
-   uv sync
-   ```
-   This will create a `.venv` directory and install all required packages.
+* **Multi-LLM Provider Suite**: Switch in real time between Google Gemini, OpenAI, Anthropic, and Groq.
+* **Custom Models**: Type in any proprietary or custom model name (e.g., `gpt-4.5-turbo`, `claude-3-7-sonnet-latest`) on the fly.
+* **Transient Session Security**: API Keys are saved **only in your transient session storage**; closing your tab instantly destroys the keys, ensuring zero persistent credentials.
+* **Auto-Created Databases & Tables**: Connects to the server, creates the target database if not found, sets up the `users` table, and automatically seeds the credentials configured in `.env`.
+* **Database-Backed Authentication**: High-fidelity dynamic authentication panel featuring a password eye visibility toggle and instant MySQL record validation.
 
-## Configuration
+---
+
+## 📁 Workspace Directory Structure
+
+Below is the directory schema of the project, highlighting the core components:
+
+```
+rag-based-aibot-for-database-procedure-application-flows/
+├── backend/                       # FastAPI Server Root Node
+│   ├── src/
+│   │   ├── database.py            # MySQL schema introspection & connection engine
+│   │   ├── seeder.py              # Auto-creates target DB, users table, and seeds admin
+│   │   ├── vector_store.py        # Schema RAG vector indexing using ChromaDB
+│   │   ├── rag.py                 # Multi-LLM provider orchestration (Gemini, OpenAI, etc.)
+│   │   └── main.py                # API endpoints & auth routing (/auth/login, /chat, etc.)
+│   ├── Dockerfile                 # Slim-Python 3.12 Docker execution manifest
+│   └── pyproject.toml             # uv package dependencies
+│
+├── frontend/                      # React Vite Client Root
+│   ├── public/
+│   │   ├── favicon.ico            # Official brand tab icon
+│   │   └── logo-white.svg         # White premium logo asset (Dark Mode)
+│   │   └── logo.svg               # Colored premium logo asset (Light Mode)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Sidebar.jsx        # Premium Sidebar with theme-aware branding
+│   │   │   └── Navbar.jsx         # Header containing live DB & theme toggle
+│   │   ├── pages/
+│   │   │   ├── LoginPage.jsx      # Auth panel with Password Eye visibility toggle
+│   │   │   ├── DashboardPage.jsx  # Chat console, prompt engineering & model selector
+│   │   │   └── IngestionPage.jsx  # DB Reflection & vector indexing cockpit
+│   │   ├── App.jsx                # Global router and session cache migrator
+│   │   └── index.css              # Custom HSL-based design system tokens
+│   ├── Dockerfile                 # Frontend build/serve container setup
+│   └── package.json               # Node dependencies
+│
+├── .env                           # Local operational environment configurations
+├── .env.example                   # Reference environment variables
+└── docker-compose.yml             # Full Multi-Container Orchestration file
+```
+
+---
+
+## ⚙️ Environment Configuration
 
 1. Copy `.env.example` to `.env`:
    ```bash
    cp .env.example .env
    ```
-2. Edit `.env` with your database credentials and Google API Key.
-   - `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`
-   - `GOOGLE_API_KEY`
-
-## Running the Application
-
-### Option 1: Development (Local)
-
-1. **Start the Streamlit UI (Frontend)**
-   ```bash
-   uv run streamlit run app.py --server.port 8502
-   ```
-   The UI will be available at `http://localhost:8502`.
-
-2. **Start the FastAPI Backend (Optional)**
-   ```bash
-   ./run.sh
-   # or manually: uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-   The API will be available at `http://localhost:8000`.
-
-### Option 2: Setup via Docker (Recommended)
-
-1. **Build the Docker image:**
-   ```bash
-   sudo docker build -t db-intelligence-bot .
-   ```
-2. **Run the Docker container:**
-   ```bash
-   sudo docker run -d \
-     --name db-bot-container \
-     --network host \
-     --env-file .env \
-     -v $(pwd)/chroma_db:/app/chroma_db \
-     db-intelligence-bot
-   ```
-   The application UI will now be accessible at `http://localhost:8502`.
-
-### Option 3: Setup via Linux (Production)
-
-To deploy securely for production on a Linux server without containerization:
-
-1. **Install global requirements (Ubuntu/Debian):**
-   ```bash
-   sudo apt update
-   sudo apt install nginx certbot python3-certbot-nginx
-   ```
-2. **Create a Systemd service for Streamlit (`/etc/systemd/system/dbbot.service`):**
+2. Update the configuration keys inside `.env`:
    ```ini
-   [Unit]
-   Description=Streamlit Database Bot Interface
-   After=network.target
+   # Database Configuration
+   MYSQL_HOST=host.docker.internal
+   MYSQL_PORT=3306
+   MYSQL_USER=root
+   MYSQL_PASSWORD=your_mysql_password
+   MYSQL_DATABASE=ragbasedsql
 
-   [Service]
-   User=your_linux_user
-   WorkingDirectory=/path/to/your/project
-   EnvironmentFile=/path/to/your/project/.env
-   ExecStart=/path/to/your/project/.venv/bin/streamlit run app.py --server.port 8502 --server.address 0.0.0.0
-   Restart=always
-   RestartSec=3
+   # Vector DB Location (default: ./chroma_db)
+   CHROMA_PERSIST_DIRECTORY=./chroma_db
 
-   [Install]
-   WantedBy=multi-user.target
+   # Default Admin Seeder Credentials
+   ADMIN_EMAIL=admin@aeologic.com
+   ADMIN_PASSWORD="your_admin_password"
+   ADMIN_NAME="Aeologic User"
    ```
-3. **Start and enable the Streamlit service:**
+
+---
+
+## 🚀 Running the Application
+
+### Option 1: Setup via Docker Compose (Recommended - Fully Automated)
+
+Docker Compose automatically spins up the MySQL-server wrapper, boots the FastAPI backend, runs database seeding, and serves the React Vite UI:
+
+1. **Build and start services**:
    ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl start dbbot
-   sudo systemctl enable dbbot
+   docker compose up --build -d
    ```
-4. **Configure Nginx as a WebSockets Reverse Proxy (`/etc/nginx/sites-available/dbbot`):**
+2. **Review Seeding & Start Logs**:
+   ```bash
+   docker compose logs -f backend
+   ```
+3. **Access the Console**:
+   * **Console UI**: Open `http://localhost:8502` in your browser.
+   * **Backend REST API**: Running at `http://localhost:8000`.
+
+---
+
+### Option 2: Local Development (Without Containers)
+
+#### 1. Start the FastAPI Backend
+```bash
+cd backend
+# Install dependencies using uv into virtual environment
+uv sync
+# Execute the startup script (runs seeder & boots uvicorn)
+./run.sh
+```
+*The API node will listen at `http://localhost:8000`.*
+
+#### 2. Start the React Client
+```bash
+cd frontend
+# Install package dependencies
+npm install
+# Start the local hot-reloaded development server
+npm run dev
+```
+*The development client will listen at `http://localhost:8502`.*
+
+---
+
+## 🌐 Option 3: High-Performance Linux Production Deployment
+
+For enterprise deployments on a bare Linux server (Ubuntu/Debian) using **PM2** (Process Manager 2) and **Nginx**:
+
+### 1. Install System Requirements
+```bash
+sudo apt update
+sudo apt install -y curl git nginx nodejs npm python3 python3-pip
+# Install PM2 globally
+sudo npm install -y pm2 -g
+# Install uv globally for fast python packaging
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### 2. Configure Backend Service under PM2
+Build your virtual environment, execute the migrations, and daemonize the FastAPI application using PM2:
+```bash
+cd backend
+uv sync
+
+# Start FastAPI under PM2
+pm2 start "uv run uvicorn src.main:app --host 127.0.0.1 --port 8000" --name "db-bot-backend"
+pm2 save
+```
+
+### 3. Deploy and Serve React Production Build
+Compile the frontend client to highly compressed production assets and daemonize using PM2's static host or Nginx directly:
+```bash
+cd ../frontend
+npm install
+# Build distribution bundle
+npm run build
+
+# Start simple static server using PM2
+pm2 serve dist 8502 --name "db-bot-frontend" --spa
+pm2 save
+```
+
+### 4. Setup Nginx Reverse Proxy with SSL
+1. **Configure WebSockets Proxy** inside `/etc/nginx/sites-available/dbbot`:
    ```nginx
    server {
        listen 80;
        server_name your_domain_or_ip.com;
 
+       # Serve React Frontend UI
        location / {
            proxy_pass http://127.0.0.1:8502;
            proxy_http_version 1.1;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header Host $host;
            proxy_set_header Upgrade $http_upgrade;
            proxy_set_header Connection "upgrade";
-           proxy_read_timeout 86400;
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
+       }
+
+       # Route REST API requests to FastAPI backend
+       location /auth/ {
+           proxy_pass http://127.0.0.1:8000/auth/;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       }
+
+       location /db/ {
+           proxy_pass http://127.0.0.1:8000/db/;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       }
+
+       location /chat {
+           proxy_pass http://127.0.0.1:8000/chat;
+           proxy_set_header Host $host;
+       }
+
+       location /diagram {
+           proxy_pass http://127.0.0.1:8000/diagram;
+           proxy_set_header Host $host;
        }
    }
    ```
-5. **Enable Nginx configuration and apply SSL:**
+2. **Enable and Apply Configuration**:
    ```bash
    sudo ln -s /etc/nginx/sites-available/dbbot /etc/nginx/sites-enabled/
    sudo nginx -t
    sudo systemctl restart nginx
-   
-   # Setup free standard SSL Certificates
+   ```
+3. **Bind Standard Free SSL Certificates**:
+   ```bash
+   sudo apt install certbot python3-certbot-nginx
    sudo certbot --nginx -d your_domain_or_ip.com
    ```
-## API Usage
 
-### 1. Ingest Database Schema
+---
 
-Run this first to scan your database and build the knowledge base.
+## 🔒 Security Operations & API Endpoints
 
+### 🔑 Authentication Handshake
 ```bash
-curl -X POST http://localhost:8000/ingest
+curl -X POST http://localhost:8000/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email": "admin@aeologic.com", "password": "Admin@#12345"}'
 ```
 
-### 2. Chat with the Bot
+### ⚡ Database Schema Ingestion
+```bash
+curl -X POST http://localhost:8000/ingest \
+     -H "Content-Type: application/json" \
+     -d '{"database": "ragbasedsql"}'
+```
 
-Ask questions about table relationships, stored procedures, or general queries.
-
+### 💬 Natural Language Prompt Chat
 ```bash
 curl -X POST http://localhost:8000/chat \
      -H "Content-Type: application/json" \
-     -d '{"query": "Explain how the orders table relates to customers"}'
+     -d '{
+       "query": "How many tables are present in the target schema?",
+       "provider": "Anthropic",
+       "model": "claude-3-7-sonnet-latest",
+       "api_key": "your_secure_session_api_key"
+     }'
 ```
-
-### 3. Generate Diagrams
-
-Request Mermaid.js syntax for ER diagrams or flows.
-
-```bash
-curl -X POST http://localhost:8000/diagram \
-     -H "Content-Type: application/json" \
-     -d '{"request": "Create an ER diagram for the user management module"}'
-```
-
-## Project Structure
-
-- `src/database.py`: Handles database connection and schema introspection using SQLAlchemy.
-- `src/vector_store.py`: Manages vector embeddings and retrieval using ChromaDB.
-- `src/rag.py`: Contains the logic for interacting with the LLM (Gemini) using LangChain.
-- `src/main.py`: The FastAPI application defining the endpoints.

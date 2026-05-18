@@ -18,8 +18,9 @@ RUN uv pip install --python /app/.venv/bin/python --no-cache-dir langchain-opena
 # Copy the rest of the application code
 COPY . .
 
-# Expose the port Streamlit runs on
-EXPOSE 8502
+# Expose the port FastAPI runs on
+EXPOSE 8000
 
-# Run the Streamlit application
-CMD ["uv", "run", "streamlit", "run", "app.py", "--server.port=8502", "--server.address=0.0.0.0"]
+# Run the FastAPI application
+CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
