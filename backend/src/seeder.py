@@ -1,7 +1,14 @@
 import os
 import time
 import urllib.parse
+import hashlib
 from sqlalchemy import create_engine, text
+
+def hash_password(password: str) -> str:
+    """
+    Encrypts/hashes a password using secure SHA-256 algorithm.
+    """
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 def seed_database():
     """
@@ -84,10 +91,10 @@ def seed_database():
                 """)
                 conn.execute(insert_admin_query, {
                     "email": admin_email,
-                    "password": admin_password,
+                    "password": hash_password(admin_password),
                     "name": admin_name
                 })
-                print(f"🎉 Database Seeder: Default admin seeded successfully: {admin_email} / {admin_password}", flush=True)
+                print(f"🎉 Database Seeder: Default admin seeded successfully: {admin_email} (password encrypted)", flush=True)
             else:
                 # Synchronize existing admin record's credentials with current .env configurations
                 update_admin_query = text("""
@@ -97,10 +104,10 @@ def seed_database():
                 """)
                 conn.execute(update_admin_query, {
                     "email": admin_email,
-                    "password": admin_password,
+                    "password": hash_password(admin_password),
                     "name": admin_name
                 })
-                print(f"🔄 Database Seeder: Administrator credentials updated/synchronized with .env settings: {admin_email}", flush=True)
+                print(f"🔄 Database Seeder: Administrator credentials updated/synchronized with .env settings: {admin_email} (password encrypted)", flush=True)
 
     except Exception as e:
         print(f"❌ Database Seeder: Error during table creation/seeding: {e}", flush=True)
@@ -126,7 +133,7 @@ def authenticate_user(email: str, password: str):
             res = conn.execute(query, {"email": email}).fetchone()
             if res:
                 db_email, db_password, db_name_val, db_role = res
-                if db_password == password:
+                if db_password == hash_password(password):
                     return {
                         "email": db_email,
                         "name": db_name_val,
