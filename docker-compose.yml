@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: db-bot-backend
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT}:8000"
     env_file:
       - .env
     environment:
@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile
     container_name: db-bot-frontend
     ports:
-      - "8502:8502"
+      - "${FRONTEND_PORT}:8502"
     volumes:
       - ./frontend:/app
       - /app/node_modules
