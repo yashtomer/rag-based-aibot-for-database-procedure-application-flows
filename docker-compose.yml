@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: db-bot-backend
+    ports:
+      - "${BACKEND_PORT}:8000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+      - ./backend/chroma_db:/app/chroma_db
+    networks:
+      - db-bot-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: db-bot-frontend
+    ports:
+      - "${FRONTEND_PORT}:8502"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - db-bot-network
+
+networks:
+  db-bot-network:
+    driver: bridge

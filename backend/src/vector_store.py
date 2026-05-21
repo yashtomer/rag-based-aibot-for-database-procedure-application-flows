@@ -56,20 +56,20 @@ def fetch_embedding_models() -> list[str]:
         return FALLBACK_EMBEDDING_MODELS
 
 
-def get_embedding_function(model: str = None):
-    api_key = os.getenv("GOOGLE_API_KEY")
+def get_embedding_function(model: str = None, api_key: str = None):
+    api_key = api_key or os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY environment variable is not set")
+        raise ValueError("LLM API Key is not configured. Please enter your API Session Key in the dashboard to verify connectivity and begin chatting!")
     model = model or DEFAULT_EMBEDDING_MODEL
     return GoogleGenerativeAIEmbeddings(model=model, google_api_key=api_key)
 
 
-def get_vector_store(embedding_model: str = None):
+def get_vector_store(embedding_model: str = None, api_key: str = None):
     client = _get_chroma_client()
     return Chroma(
         client=client,
         collection_name=COLLECTION_NAME,
-        embedding_function=get_embedding_function(embedding_model),
+        embedding_function=get_embedding_function(embedding_model, api_key),
     )
 
 

@@ -6,12 +6,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_db_url() -> str:
+def get_db_url(db_name: str = None) -> str:
     user = os.getenv("MYSQL_USER", "").strip('\"\'')
     password = os.getenv("MYSQL_PASSWORD", "").strip('\"\'')
     host = os.getenv("MYSQL_HOST", "").strip('\"\'')
     port = os.getenv("MYSQL_PORT", "3306").strip('\"\'')
-    db = os.getenv("MYSQL_DATABASE", "").strip('\"\'')
+    db = db_name if db_name else os.getenv("MYSQL_DATABASE", "").strip('\"\'')
 
     if not all([user, host, db]):
         print("Warning: Missing database configuration in .env. Using a mock SQLite DB for demonstration.")
@@ -19,13 +19,11 @@ def get_db_url() -> str:
 
     encoded_password = urllib.parse.quote_plus(password) if password else ""
     db_url = f"mysql+pymysql://{user}:{encoded_password}@{host}:{port}/{db}"
-    print(f"Connecting to Full Database: mysql+pymysql://{user}:{encoded_password}@{host}:{port}/{db}")
-    print(f"Raw Password: {password}")
-    print(f"Encoded Password: {encoded_password}")
+    print(f"Connecting to Database: mysql+pymysql://{user}:{encoded_password}@{host}:{port}/{db}")
     return db_url
 
-def get_engine():
-    return create_engine(get_db_url())
+def get_engine(db_name: str = None):
+    return create_engine(get_db_url(db_name))
 
 def get_schema_summary(engine) -> str:
     """
@@ -82,7 +80,7 @@ def get_stored_procedures(engine) -> str:
     if engine.dialect.name != "mysql":
         return ""
 
-    db_name = os.getenv("MYSQL_DATABASE")
+    db_name = engine.url.database
     if not db_name:
         return ""
 
@@ -107,11 +105,11 @@ def get_stored_procedures(engine) -> str:
 
     return "\n\n".join(procedures_text)
 
-def get_full_db_context() -> str:
+def get_full_db_context(db_name: str = None) -> str:
     """
     Combines schema summary and stored procedures into a single context string.
     """
-    engine = get_engine()
+    engine = get_engine(db_name)
     schema = get_schema_summary(engine)
     procs = get_stored_procedures(engine)
    

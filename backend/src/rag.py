@@ -26,10 +26,10 @@ LLM_PROVIDERS = {
 }
 
 FALLBACK_MODELS = {
-    "Gemini (Google)": ["gemini-3.1-pro", "gemini-3.1-flash", "gemini-2.5-pro", "gemini-2.5-flash","gemini-2.5-flash-lite"],
-    "Groq": ["llama-4-70b", "llama-4-8b", "deepseek-r1-distill-llama-70b", "mistral-saba-24b"],
+    "Gemini (Google)": ["gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-2.5-pro", "gemini-2.5-flash"],
+    "Groq": ["llama-4-70b", "llama-4-8b", "deepseek-r1-distill-llama-70b"],
     "OpenAI": ["gpt-5.4-pro", "gpt-5.4-thinking", "gpt-5.4-mini"],
-    "Anthropic": ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5-20251001", "claude-sonnet-3-7"],
+    "Anthropic": ["claude-sonnet-4-6", "claude-opus-4-6", "claude-sonnet-3-7"],
 }
 
 
@@ -155,7 +155,8 @@ def get_chat_response(query: str, provider: str = "Gemini (Google)", model: str 
     """
     Retrieves context and answers a natural language question about the database.
     """
-    vector_store = get_vector_store(embedding_model)
+    emb_key = api_key if provider == "Gemini (Google)" else None
+    vector_store = get_vector_store(embedding_model, api_key=emb_key)
     retriever = vector_store.as_retriever(search_kwargs={"k": _retriever_k(provider)})
     llm = get_llm(provider, model, api_key)
 
@@ -200,7 +201,8 @@ def get_diagram_response(query: str, provider: str = "Gemini (Google)", model: s
             context = None
 
     if not _use_full_schema or not context:
-        vector_store = get_vector_store(embedding_model)
+        emb_key = api_key if provider == "Gemini (Google)" else None
+        vector_store = get_vector_store(embedding_model, api_key=emb_key)
         retriever = vector_store.as_retriever(search_kwargs={"k": 10})
         docs = retriever.invoke(query)
         context = format_docs(docs)
